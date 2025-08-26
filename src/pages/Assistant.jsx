@@ -8,18 +8,21 @@ export default function Assistant() {
   const synth = window.speechSynthesis;
   const [isListening, setIsListening] = useState(false);
   const [waveform, setWaveform] = useState(Array(50).fill(0));
+  const [conversation, setConversation] = useState([]); // left side display
+  const [time, setTime] = useState(new Date().toLocaleTimeString()); // right side clock
 
+  // auth check
   useEffect(() => {
     checkAuth().then((data) => {
       window.history.pushState(null, "", window.location.href);
       window.onpopstate = () => {
-        window.history.go(1); // block going back
+        window.history.go(1);
       };
       if (!data) navigate("/login");
     });
   }, [navigate]);
 
-  // Animated waveform
+  // waveform animation
   useEffect(() => {
     let interval;
     if (isListening) {
@@ -32,6 +35,14 @@ export default function Assistant() {
     return () => clearInterval(interval);
   }, [isListening]);
 
+  // clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const speak = (text) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1;
@@ -41,35 +52,39 @@ export default function Assistant() {
 
   const handleCommand = async (query) => {
     console.log("User said:", query);
+    setConversation((prev) => [...prev, { sender: "User", text: query }]);
 
+    let reply = "";
     if (query.includes("open youtube")) {
-      speak("Opening YouTube");
+      reply = "Opening YouTube";
       window.open("https://www.youtube.com", "_blank");
     } else if (query.includes("open wikipedia")) {
-      speak("Opening Wikipedia");
+      reply = "Opening Wikipedia";
       window.open("https://www.wikipedia.com", "_blank");
     } else if (query.includes("open google and search")) {
       const searchQuery = query.split("open google and search")[1]?.trim();
       if (searchQuery) {
-        speak(`Searching Google for ${searchQuery}`);
+        reply = `Searching Google for ${searchQuery}`;
         window.location.href = `https://www.google.com/search?q=${encodeURIComponent(
           searchQuery
         )}`;
       } else {
-        speak("What should I search for?");
+        reply = "What should I search for?";
       }
     } else if (query.includes("the time")) {
-      const time = new Date().toLocaleTimeString();
-      speak(`The time is ${time}`);
+      reply = `The time is ${new Date().toLocaleTimeString()}`;
     } else if (query.includes("jarvis")) {
       const res = await askAI(query);
-      speak(res.response);
+      reply = res.response;
     } else if (query.includes("stop")) {
-      speak("Goodbye");
+      reply = "Goodbye";
       stopListening();
     } else {
-      speak("Sorry, I did not understand that.");
+      reply = "Sorry, I did not understand that.";
     }
+
+    speak(reply);
+    setConversation((prev) => [...prev, { sender: "Jarvis", text: reply }]);
   };
 
   const startListening = () => {
@@ -84,7 +99,8 @@ export default function Assistant() {
     recognition.interimResults = false;
 
     recognition.onresult = (event) => {
-      const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+      const transcript =
+        event.results[event.results.length - 1][0].transcript.toLowerCase();
       handleCommand(transcript);
     };
 
@@ -102,7 +118,7 @@ export default function Assistant() {
     try {
       const res = await fetch("http://127.0.0.1:8000/accounts/react-logout/", {
         method: "POST",
-        credentials: "include", // important for Django session
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -142,8 +158,12 @@ export default function Assistant() {
               <span className="text-black font-bold">J</span>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-white">JARVIS Assistant</h1>
-              <p className="text-sm text-gray-400">AI-Powered Virtual Assistant</p>
+              <h1 className="text-xl font-semibold text-white">
+                JARVIS Assistant
+              </h1>
+              <p className="text-sm text-gray-400">
+                AI-Powered Virtual Assistant
+              </p>
             </div>
           </div>
 
@@ -156,48 +176,82 @@ export default function Assistant() {
           </button>
         </div>
       </div>
-      
 
-      {/* Voice Waveform Visualization */}
-      {isListening && (
-        <div className="relative z-10 p-4 backdrop-blur-md bg-black/10">
-          <div className="flex items-center justify-center space-x-1 h-16">
-            {waveform.map((height, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-t from-cyan-400 to-magenta-500 rounded-full transition-all duration-100"
-                style={{
-                  width: "3px",
-                  height: `${Math.max(4, height * 0.4)}px`,
-                }}
-              ></div>
+      {/* Main Section with Left + Center + Right */}
+      <div className="relative z-10 flex flex-1">
+        {/* Left: Conversation */}
+        <div className="w-1/4 p-4 overflow-y-auto border-r border-cyan-500/20 backdrop-blur-md bg-black/10">
+          <h2 className="text-cyan-400 text-lg font-semibold mb-2">
+            Conversation
+          </h2>
+          <div className="space-y-2 text-sm text-gray-300">
+            {conversation.map((msg, i) => (
+              <p key={i}>
+                <span
+                  className={`font-bold ${
+                    msg.sender === "User" ? "text-cyan-400" : "text-magenta-400"
+                  }`}
+                >
+                  {msg.sender}:
+                </span>{" "}
+                {msg.text}
+              </p>
             ))}
           </div>
-          <p className="text-center text-cyan-400 text-sm mt-2 animate-pulse">
-            Listening... Speak now
-          </p>
         </div>
-      )}
 
-      {/* Controls */}
-      <div className="relative z-10 p-6 backdrop-blur-md bg-black/20 border-t border-cyan-500/20 flex justify-center">
-        <button
-          onClick={isListening ? stopListening : startListening}
-          className={`p-4 rounded-full transition-all duration-300 ${isListening
-              ? "bg-gradient-to-r from-red-500 to-pink-500 shadow-lg shadow-red-400/30 animate-pulse"
-              : "bg-gradient-to-r from-cyan-500 to-magenta-500 hover:shadow-lg hover:shadow-cyan-400/30"
-            }`}
-        >
-          <svg
-            className="w-6 h-6 text-white"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M12 2a3 3 0 013 3v6a3 3 0 01-6 0V5a3 3 0 013-3z"></path>
-            <path d="M19 10v1a7 7 0 01-14 0v-1"></path>
-            <path d="M12 19v3"></path>
-          </svg>
-        </button>
+        {/* Center: Voice + Mic */}
+        <div className="flex-1 flex flex-col justify-center items-center">
+          {isListening && (
+            <div className="p-4 backdrop-blur-md bg-black/10">
+              <div className="flex items-center justify-center space-x-1 h-16">
+                {waveform.map((height, index) => (
+                  <div
+                    key={index}
+                    className="bg-gradient-to-t from-cyan-400 to-magenta-500 rounded-full transition-all duration-100"
+                    style={{
+                      width: "3px",
+                      height: `${Math.max(4, height * 0.4)}px`,
+                    }}
+                  ></div>
+                ))}
+              </div>
+              <p className="text-center text-cyan-400 text-sm mt-2 animate-pulse">
+                Listening... Speak now
+              </p>
+            </div>
+          )}
+
+          {/* Mic Button */}
+          <div className="mt-6">
+            <button
+              onClick={isListening ? stopListening : startListening}
+              className={`p-4 rounded-full transition-all duration-300 ${
+                isListening
+                  ? "bg-gradient-to-r from-red-500 to-pink-500 shadow-lg shadow-red-400/30 animate-pulse"
+                  : "bg-gradient-to-r from-cyan-500 to-magenta-500 hover:shadow-lg hover:shadow-cyan-400/30"
+              }`}
+            >
+              <svg
+                className="w-6 h-6 text-white"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2a3 3 0 013 3v6a3 3 0 01-6 0V5a3 3 0 013-3z"></path>
+                <path d="M19 10v1a7 7 0 01-14 0v-1"></path>
+                <path d="M12 19v3"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Live Time */}
+        <div className="w-1/4 p-4 border-l border-cyan-500/20 backdrop-blur-md bg-black/10 flex flex-col items-center justify-start">
+          <h2 className="text-magenta-400 text-lg font-semibold mb-2">
+            Live Time
+          </h2>
+          <p className="text-2xl text-white font-mono">{time}</p>
+        </div>
       </div>
     </div>
   );
