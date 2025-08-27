@@ -116,7 +116,7 @@ export default function Assistant() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/accounts/react-logout/", {
+      const res = await fetch("https://jarvis-ai-backend-nu7x.onrender.com/accounts/react-logout/", {
         method: "POST",
         credentials: "include",
         headers: {

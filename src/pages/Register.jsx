@@ -22,7 +22,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/accounts/react-register/', {
+      const res = await fetch('https://jarvis-ai-backend-nu7x.onrender.com/accounts/react-register/', {
         method: 'POST',
         credentials: 'include',
         headers: {

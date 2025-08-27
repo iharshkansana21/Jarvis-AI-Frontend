@@ -21,7 +21,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:8000/accounts/react-login/', {
+      const res = await fetch('https://jarvis-ai-backend-nu7x.onrender.com/accounts/react-login/', {
         method: 'POST',
         credentials: 'include', // important for Django session cookies
         headers: {
