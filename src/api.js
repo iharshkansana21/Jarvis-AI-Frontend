@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000/accounts";
+const API_BASE = "https://jarvis-ai-backend-nu7x.onrender.com/accounts";
 
 export async function askAI(prompt) {
   const res = await fetch(`${API_BASE}/ask-ai/`, {
