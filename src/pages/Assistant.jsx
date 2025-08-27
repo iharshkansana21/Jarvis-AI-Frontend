@@ -13,22 +13,14 @@ export default function Assistant() {
 
   // auth check
   useEffect(() => {
-  const verifyAuth = async () => {
-    const user = await checkAuth();
-
-    if (!user) {
-      navigate("/login"); // redirect to login
-    } else {
-      console.log("Authenticated as:", user.user);
-    }
-
-    // Prevent back button navigation if needed
-    window.history.pushState(null, "", window.location.href);
-    window.onpopstate = () => window.history.go(1);
-  };
-
-  verifyAuth();
-}, [navigate]);
+    checkAuth().then((data) => {
+      window.history.pushState(null, "", window.location.href);
+      window.onpopstate = () => {
+        window.history.go(1);
+      };
+      if (!data) navigate("/login");
+    });
+  }, [navigate]);
 
   // waveform animation
   useEffect(() => {
